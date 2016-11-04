@@ -80,11 +80,27 @@ def backward():
 
         m.run_forever()
 
+        
+def revert():
+    left_motor.stop()
+    right_motor.stop()
+   
+    # new absolute position
+    abs_pos_r = right_motor.position - 500
+    abs_pos_l = left_motor.position - 500
+
+    right_motor.position_sp = abs_pos_r
+    right_motor.run_to_abs_pos()
+
+    left_motor.position_sp = abs_pos_l
+    left_motor.run_to_abs_pos()
+    
+    while abs(right_motor.position - abs_pos_r) > 10:
+        # turn to new position
+        pass
 
 def forward():
-
     for m in motors:
-
         speed = m.speed_sp
         if speed < 0:
             m.speed_sp = speed * -1
@@ -135,6 +151,10 @@ def teardown():
 
 def attack():
     while True:
+        if color_sensor.value() > 15:
+            revert() 
+            break
+    
         if ultrasonic_sensor.value() < DEFAULT_THRESHOLD_DISTANCE:
             forward()
         else:
@@ -159,23 +179,6 @@ def run_loop():
         
         search()
         attack()
-        
-    
-        # time.sleep(DEFAULT_SLEEP_TIMEOUT_IN_SEC)
-        # print('color value: %s' % str(color_sensor.value()))
-        # print('ultrasonic value: %s' % str(ultrasonic_sensor.value()))
-        # print('motor positions (r, l): %s, %s' % (str(right_motor.position), str(left_motor.position)))     
-
-        # found obstacle
-        # if ultrasonic_sensor.value() < DEFAULT_THRESHOLD_DISTANCE:
-            # if not found:
-                # turn_angle(45)
-            # found = true
-            # forward()
-        # else:
-            # found = false
-            # search_turn()
-            
 
             
 def angle_to_pos(angle):
@@ -223,25 +226,20 @@ def main_old():
         
 def main():
     print('Run robot, run!')
-    
-    buf = array.array('B', [0] * BUF_LEN)
-    with open('/dev/input/by-path/platform-gpio-keys.0-event', 'r') as fd:
-        ret = fcntl.ioctl(fd, EVIOCGKEY(len(buf)), buf)
-
-    if ret < 0:
-        print "ioctl error", ret
-        sys.exit(1)
-
-    for key in ['UP', 'DOWN', 'LEFT', 'RIGHT', 'ENTER', 'BACKSPACE']:
+    while True:
+        buf = array.array('B', [0] * BUF_LEN)
+        with open('/dev/input/by-path/platform-gpio-keys.0-event', 'r') as fd:
+            ret = fcntl.ioctl(fd, EVIOCGKEY(len(buf)), buf)
+        
+        key = 'ENTER'
         key_code = globals()['KEY_' + key]
         key_state = test_bit(key_code, buf) and "pressed" or "released"
-        print '%9s : %s' % (key, key_state)            
-        
+        if key_state == "pressed":
+            break                  
     
     set_speed(DEFAULT_SPEED)
     try:
-        turn_angle(360)
-        
+        turn_angle(180)        
         run_loop()
         
     # doing a cleanup action just before program ends
