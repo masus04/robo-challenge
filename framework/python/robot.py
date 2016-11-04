@@ -1,17 +1,39 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 import time
 import ev3dev.ev3 as ev3
+import math
+
+import array
+import fcntl
+import sys
+
+# from linux/input.h
+
+KEY_UP = 103
+KEY_DOWN = 108
+KEY_LEFT = 105
+KEY_RIGHT = 106
+KEY_ENTER = 28
+KEY_BACKSPACE = 14
+
+KEY_MAX = 0x2ff
+
+def EVIOCGKEY(length):
+    return 2 << (14+8+8) | length << (8+8) | ord('E') << 8 | 0x18
+    
+BUF_LEN = (KEY_MAX + 7) / 8
+
+def test_bit(bit, bytes):
+    # bit in bytes is 1 when released and 0 when pressed
+    return not bool(bytes[bit / 8] & (1 << (bit % 8)))
 
 # default sleep timeout in sec
-DEFAULT_SLEEP_TIMEOUT_IN_SEC = 0.1
-
-# default speed
-DEFAULT_SPEED = 600
+DEFAULT_SLEEP_TIMEOUT_IN_SEC = 0.01
 
 # default threshold distance
-DEFAULT_THRESHOLD_DISTANCE = 90
+DEFAULT_THRESHOLD_DISTANCE = 700 # 1000
 
 ##
 # Setup
@@ -30,6 +52,9 @@ motors = [left_motor, right_motor]
 right_motor.reset()
 left_motor.reset()
 
+right_motor.speed_regulation_enabled = 'on'
+left_motor.speed_regulation_enabled = 'on'
+
 # sensors
 color_sensor = ev3.ColorSensor()
 print("color sensor connected: %s" % str(color_sensor.connected))
@@ -39,6 +64,9 @@ ultrasonic_sensor = ev3.UltrasonicSensor()
 print("ultrasonic sensor connected: %s" % str(ultrasonic_sensor.connected))
 ultrasonic_sensor.mode = 'US-DIST-CM'
 
+# default speed
+DEFAULT_SPEED = 2000
+SEARCH_SPEED = 500
 
 ##
 #  Robot functionality
@@ -56,10 +84,10 @@ def backward():
 def forward():
 
     for m in motors:
+
         speed = m.speed_sp
         if speed < 0:
             m.speed_sp = speed * -1
-
         m.run_forever()
 
 
@@ -93,55 +121,167 @@ def turn():
     set_speed(DEFAULT_SPEED)
     forward()
 
+def search_turn():
+    left_motor.speed_sp = SEARCH_SPEED
+    right_motor.speed_sp = -SEARCH_SPEED
+    for m in motors:
+        m.run_forever()     
 
 def teardown():
     print('Tearing down...')
     for m in motors:
         m.stop()
-        m.reset()
+        m.reset()       
 
-
+def attack():
+    while True:
+        if ultrasonic_sensor.value() < DEFAULT_THRESHOLD_DISTANCE:
+            forward()
+        else:
+            break
+    
+    
+def search():
+    while True:
+        search_turn()
+        if ultrasonic_sensor.value() < DEFAULT_THRESHOLD_DISTANCE:
+            turn_angle(45)
+            break
+    
 def run_loop():
     # game loop (endless loop)
+    # found = False
     while True:
         time.sleep(DEFAULT_SLEEP_TIMEOUT_IN_SEC)
         print('color value: %s' % str(color_sensor.value()))
         print('ultrasonic value: %s' % str(ultrasonic_sensor.value()))
-        print('motor positions (r, l): %s, %s' % (str(right_motor.position), str(left_motor.position)))
+        print('motor positions (r, l): %s, %s' % (str(right_motor.position), str(left_motor.position)))     
+        
+        search()
+        attack()
+        
+    
+        # time.sleep(DEFAULT_SLEEP_TIMEOUT_IN_SEC)
+        # print('color value: %s' % str(color_sensor.value()))
+        # print('ultrasonic value: %s' % str(ultrasonic_sensor.value()))
+        # print('motor positions (r, l): %s, %s' % (str(right_motor.position), str(left_motor.position)))     
 
         # found obstacle
-        if ultrasonic_sensor.value() < DEFAULT_THRESHOLD_DISTANCE:
+        # if ultrasonic_sensor.value() < DEFAULT_THRESHOLD_DISTANCE:
+            # if not found:
+                # turn_angle(45)
+            # found = true
+            # forward()
+        # else:
+            # found = false
+            # search_turn()
+            
 
-            set_speed(DEFAULT_SPEED / 2)
-            brake()
+            
+def angle_to_pos(angle):
+    return angle / 360.0 * 650 - math.copysign(85, angle)
+            
+#angle is 0 to 360
+def turn_angle(angle):
+    left_motor.stop()
+    right_motor.stop()
+   
+    # new absolute position
+    abs_pos_r = right_motor.position + angle_to_pos(angle)
+    abs_pos_l = left_motor.position - angle_to_pos(angle)
 
-            # drive backwards
-            backward()
+    right_motor.position_sp = abs_pos_r
+    right_motor.run_to_abs_pos()
 
-            new_pos = right_motor.position - 200
-            timeout = time.time()
-
-            while right_motor.position - new_pos > 10:
-                # wait until robot has reached the new position or timeout (seconds) has expired
-                if time.time() - timeout > 5:
-                    break
-
-            # turn
-            turn()
-
-        else:
-            forward()
+    left_motor.position_sp = abs_pos_l
+    left_motor.run_to_abs_pos()
+    
+    while abs(right_motor.position - abs_pos_r) > 10:
+        # turn to new position
+        print('turning')
 
 
-def main():
+def main_old():
     print('Run robot, run!')
-
     set_speed(DEFAULT_SPEED)
     forward()
 
     try:
         run_loop()
 
+    # doing a cleanup action just before program ends
+    # handle ctr+c and system exit
+    except (KeyboardInterrupt, SystemExit):
+        teardown()
+        raise
+
+    # handle exceptions
+    except Exception as e:
+        print('ohhhh error!')
+        print(e)
+        teardown()
+        
+def main():
+    print('Run robot, run!')
+    
+    buf = array.array('B', [0] * BUF_LEN)
+    with open('/dev/input/by-path/platform-gpio-keys.0-event', 'r') as fd:
+        ret = fcntl.ioctl(fd, EVIOCGKEY(len(buf)), buf)
+
+    if ret < 0:
+        print "ioctl error", ret
+        sys.exit(1)
+
+    for key in ['UP', 'DOWN', 'LEFT', 'RIGHT', 'ENTER', 'BACKSPACE']:
+        key_code = globals()['KEY_' + key]
+        key_state = test_bit(key_code, buf) and "pressed" or "released"
+        print '%9s : %s' % (key, key_state)            
+        
+    
+    set_speed(DEFAULT_SPEED)
+    try:
+        turn_angle(360)
+        
+        run_loop()
+        
+    # doing a cleanup action just before program ends
+    # handle ctr+c and system exit
+    except (KeyboardInterrupt, SystemExit):
+        teardown()
+        raise
+
+    # handle exceptions
+    except Exception as e:
+        print('ohhhh error!')
+        print(e)
+        teardown()
+        
+    print('Run robot, run!')
+    set_speed(DEFAULT_SPEED)
+    forward()
+
+    try:
+        run_loop()
+
+    # doing a cleanup action just before program ends
+    # handle ctr+c and system exit
+    except (KeyboardInterrupt, SystemExit):
+        teardown()
+        raise
+
+    # handle exceptions
+    except Exception as e:
+        print('ohhhh error!')
+        print(e)
+        teardown()
+        
+        
+        
+def main_debug():
+    print('Run robot, run!')
+    set_speed(DEFAULT_SPEED)
+    try:
+        turn_angle(180)
     # doing a cleanup action just before program ends
     # handle ctr+c and system exit
     except (KeyboardInterrupt, SystemExit):
