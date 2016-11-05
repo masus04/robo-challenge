@@ -189,17 +189,15 @@ def run_loop():
     while True:
         print('color value: %s' % str(color_sensor.value()))
         print('ultrasonic value: %s' % str(ultrasonic_sensor.value()))
-        print('motor positions (r, l): %s, %s' % (str(right_motor.position), str(left_motor.position)))     
-
-        search()
+        print('motor positions (r, l): %s, %s' % (str(right_motor.position), str(left_motor.position)))
+        
         attack()
+        search()
 
             
 def angle_to_pos(angle):
     # return angle / 360.0 * 650 - math.copysign(85, angle)
-    return angle * 600 / 360.0
-
-            
+    return angle * 600 / 360.0            
             
 def turn_angle_async(angle, speed):
     left_motor.speed_sp = speed
@@ -248,15 +246,9 @@ def main():
             break                  
     
     set_speed(DEFAULT_SPEED)
-    
     try:
-        for i in range(0, 5):
-            turn_angle(180)          
-            time.sleep(1)
-    
-    # try:
-        # turn_angle(180)        
-        # run_loop()
+        turn_angle(180)        
+        run_loop()
         
     # doing a cleanup action just before program ends
     # handle ctr+c and system exit
