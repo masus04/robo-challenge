@@ -66,8 +66,8 @@ ultrasonic_sensor.mode = 'US-DIST-CM'
 
 # default speed
 DEFAULT_SPEED = 2000
-SEARCH_SPEED = 400
-SEARCH_SPEED_SLOW = 400
+SEARCH_SPEED = 2000
+SEARCH_SPEED_SLOW = 300
 
 # print('search speed')
 # print(str(SEARCH_SPEED))
@@ -186,7 +186,7 @@ def search_fast():
             for m in motors:
                 m.stop()
             break
-    turn_angle(-15)
+    # turn_angle(-15)
             
 def search():
     search_fast()
