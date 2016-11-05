@@ -73,6 +73,7 @@ touch_sensor_r = ev3.TouchSensor("in3")
 DEFAULT_SPEED = 2000
 SEARCH_SPEED = 2000
 SEARCH_SPEED_SLOW = 300
+CURVE_SPEED = 400
 ATTACK_DURATION = 0.5
 # print('search speed')
 # print(str(SEARCH_SPEED))
@@ -99,12 +100,9 @@ def revert():
         pass
 
 def forward():
+    set_speed(DEFAULT_SPEED)
     for m in motors:
-        speed = m.speed_sp
-        if speed > 0:
-            m.speed_sp = speed * -1
         m.run_forever()
-
 
 def set_speed(speed):
     for m in motors:
@@ -147,24 +145,51 @@ def teardown():
     for m in motors:
         m.stop()
         m.reset()       
-
+        
+def curve(is_left):
+    if is_left:
+        left_motor.speed_sp = -CURVE_SPEED
+        right_motor.speed_sp = -DEFAULT_SPEED
+        
+    else:
+        left_motor.speed_sp = -DEFAULT_SPEED
+        right_motor.speed_sp = -CURVE_SPEED
+    
+    for m in motors:
+        m.run_forever()
+        
+    
+        
+def attack_turn():
+    if (touch_sensor_l.value() == 1 and touch_sensor_r.value() == 0):
+        curve(True)
+       
+    elif (touch_sensor_l.value() == 0 and touch_sensor_r.value() == 1):
+        curve(False)
+      
+      
 def attack():
     ev3.Sound.beep("-f 100")
     set_speed(DEFAULT_SPEED)
+    
     startTime = time.time()
     while True:
         time.sleep(DEFAULT_SLEEP_TIMEOUT_IN_SEC)
+        
         if color_sensor.value() > 15:
             revert() 
             break
-    
-        if time.time() < (startTime + ATTACK_DURATION) or ultrasonic_sensor.value() < DEFAULT_THRESHOLD_DISTANCE:
-            forward()
-        else:
+            
+        if time.time() < (startTime + ATTACK_DURATION) or ultrasonic_sensor.value() < DEFAULT_THRESHOLD_DISTANCE or touch_sensor_l.value() == 1 or touch_sensor_r.value() == 1:
+            if (touch_sensor_l.value() == 1 and touch_sensor_r.value() == 1) or (touch_sensor_l.value() == 0 and touch_sensor_r.value() == 0):
+                forward()
+            else:
+                attack_turn()           
+        else:      
             for m in motors:
                 m.stop()
             break
-    
+                            
    
 def search_slow():
     ev3.Sound.beep("-f 800")      
@@ -174,6 +199,10 @@ def search_slow():
         if color_sensor.value() > 15:
             revert() 
             break
+            
+        if touch_sensor_l.value() == 1 or touch_sensor_r.value() == 1:
+            attack()
+            
         if ultrasonic_sensor.value() < DEFAULT_THRESHOLD_DISTANCE:
             for m in motors:
                 m.stop()
@@ -191,6 +220,10 @@ def search_fast():
         if color_sensor.value() > 15:
             revert() 
             break
+        
+        if touch_sensor_l.value() == 1 or touch_sensor_r.value() == 1:
+            attack()
+            
         if ultrasonic_sensor.value() < DEFAULT_THRESHOLD_DISTANCE:
             for m in motors:
                 m.stop()
@@ -262,6 +295,8 @@ def main():
         key_code = globals()['KEY_' + key]
         key_state = test_bit(key_code, buf) and "pressed" or "released"
         if key_state == "pressed":
+            ev3.Sound.beep("-f 100")
+            ev3.Sound.beep("-f 100")
             break                  
     
     set_speed(DEFAULT_SPEED)
@@ -286,7 +321,7 @@ def main():
 ##
 # start the program
 ##
-# main()
+main()
 
 # while True:
     # print('color value: %s' % str(color_sensor.value()))
@@ -295,8 +330,8 @@ def main():
     # print('ultrasonic value: %s' % str(ultrasonic_sensor.value()))
 
 
-while True:
-    time.sleep(0.4)
-    print('left touch value: %s' % str(touch_sensor_l.value()))
-    print('right touch value: %s' % str(touch_sensor_r.value()))
+# while True:
+    # time.sleep(0.4)
+    # print('left touch value: %s' % str(touch_sensor_l.value()))
+    # print('right touch value: %s' % str(touch_sensor_r.value()))
 
