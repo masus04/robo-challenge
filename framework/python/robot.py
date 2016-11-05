@@ -66,7 +66,11 @@ ultrasonic_sensor.mode = 'US-DIST-CM'
 
 # default speed
 DEFAULT_SPEED = 2000
-SEARCH_SPEED = 500
+SEARCH_SPEED = 400
+SEARCH_SPEED_SLOW = 100
+
+# print('search speed')
+# print(str(SEARCH_SPEED))
 
 ##
 #  Robot functionality
@@ -137,9 +141,9 @@ def turn():
     set_speed(DEFAULT_SPEED)
     forward()
 
-def search_turn():
-    left_motor.speed_sp = SEARCH_SPEED
-    right_motor.speed_sp = -SEARCH_SPEED
+def search_turn(speed):
+    left_motor.speed_sp = speed
+    right_motor.speed_sp = -speed
     for m in motors:
         m.run_forever()     
 
@@ -150,7 +154,9 @@ def teardown():
         m.reset()       
 
 def attack():
+    set_speed(DEFAULT_SPEED)
     while True:
+        time.sleep(DEFAULT_SLEEP_TIMEOUT_IN_SEC)
         if color_sensor.value() > 15:
             revert() 
             break
@@ -158,25 +164,47 @@ def attack():
         if ultrasonic_sensor.value() < DEFAULT_THRESHOLD_DISTANCE:
             forward()
         else:
+            for m in motors:
+                m.stop()
             break
     
     
 def search():
+    # print('search speed search')
+    # print(str(SEARCH_SPEED))
+        
+    for m in motors:
+        m.stop()
     while True:
-        search_turn()
+        time.sleep(DEFAULT_SLEEP_TIMEOUT_IN_SEC)
+        search_turn(SEARCH_SPEED)
         if ultrasonic_sensor.value() < DEFAULT_THRESHOLD_DISTANCE:
-            turn_angle(45)
+            turn_angle(20)
+            for m in motors:
+                m.stop()
             break
+    # SEARCH_SPEED *= -1
+    # turn_angle(5)
+    # print('Change Dir')
+    # time.sleep(2)
+    # while True:
+        # time.sleep(DEFAULT_SLEEP_TIMEOUT_IN_SEC)
+        # search_turn(-SEARCH_SPEED_SLOW)
+        ## turn_angle_async(45, SEARCH_SPEED)
+        # if ultrasonic_sensor.value() < DEFAULT_THRESHOLD_DISTANCE:
+            # for m in motors:
+                # m.stop()
+            # break
     
 def run_loop():
     # game loop (endless loop)
     # found = False
     while True:
-        time.sleep(DEFAULT_SLEEP_TIMEOUT_IN_SEC)
         print('color value: %s' % str(color_sensor.value()))
         print('ultrasonic value: %s' % str(ultrasonic_sensor.value()))
         print('motor positions (r, l): %s, %s' % (str(right_motor.position), str(left_motor.position)))     
-        
+        print('search speed')
+        print(str(SEARCH_SPEED))
         search()
         attack()
 
@@ -184,6 +212,21 @@ def run_loop():
 def angle_to_pos(angle):
     return angle / 360.0 * 650 - math.copysign(85, angle)
             
+            
+def turn_angle_async(angle, speed):
+    left_motor.speed_sp = speed
+    right_motor.speed_sp = -speed
+    
+    # new absolute position
+    abs_pos_r = right_motor.position + angle_to_pos(angle)
+    abs_pos_l = left_motor.position - angle_to_pos(angle)
+
+    right_motor.position_sp = abs_pos_r
+    right_motor.run_to_abs_pos()
+
+    left_motor.position_sp = abs_pos_l
+    left_motor.run_to_abs_pos()
+
 #angle is 0 to 360
 def turn_angle(angle):
     left_motor.stop()
@@ -201,28 +244,9 @@ def turn_angle(angle):
     
     while abs(right_motor.position - abs_pos_r) > 10:
         # turn to new position
-        print('turning')
+        # print('turning')
+        pass
 
-
-def main_old():
-    print('Run robot, run!')
-    set_speed(DEFAULT_SPEED)
-    forward()
-
-    try:
-        run_loop()
-
-    # doing a cleanup action just before program ends
-    # handle ctr+c and system exit
-    except (KeyboardInterrupt, SystemExit):
-        teardown()
-        raise
-
-    # handle exceptions
-    except Exception as e:
-        print('ohhhh error!')
-        print(e)
-        teardown()
         
 def main():
     print('Run robot, run!')
@@ -237,30 +261,13 @@ def main():
         if key_state == "pressed":
             break                  
     
+    print('search speed')
+    print(str(SEARCH_SPEED))
     set_speed(DEFAULT_SPEED)
     try:
         turn_angle(180)        
         run_loop()
         
-    # doing a cleanup action just before program ends
-    # handle ctr+c and system exit
-    except (KeyboardInterrupt, SystemExit):
-        teardown()
-        raise
-
-    # handle exceptions
-    except Exception as e:
-        print('ohhhh error!')
-        print(e)
-        teardown()
-        
-    print('Run robot, run!')
-    set_speed(DEFAULT_SPEED)
-    forward()
-
-    try:
-        run_loop()
-
     # doing a cleanup action just before program ends
     # handle ctr+c and system exit
     except (KeyboardInterrupt, SystemExit):
@@ -295,3 +302,7 @@ def main_debug():
 # start the program
 ##
 main()
+
+# while True:
+    # print('color value: %s' % str(color_sensor.value()))
+
