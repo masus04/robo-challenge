@@ -196,7 +196,9 @@ def run_loop():
 
             
 def angle_to_pos(angle):
-    return angle / 360.0 * 650 - math.copysign(85, angle)
+    # return angle / 360.0 * 650 - math.copysign(85, angle)
+    return angle * 600 / 360.0
+
             
             
 def turn_angle_async(angle, speed):
@@ -230,6 +232,7 @@ def turn_angle(angle):
     
     while abs(right_motor.position - abs_pos_r) > 10:
         pass
+    brake()
         
 def main():
     print('Run robot, run!')
@@ -245,9 +248,15 @@ def main():
             break                  
     
     set_speed(DEFAULT_SPEED)
+    
     try:
-        turn_angle(180)        
-        run_loop()
+        for i in range(0, 5):
+            turn_angle(180)          
+            time.sleep(1)
+    
+    # try:
+        # turn_angle(180)        
+        # run_loop()
         
     # doing a cleanup action just before program ends
     # handle ctr+c and system exit
