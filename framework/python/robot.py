@@ -67,7 +67,7 @@ ultrasonic_sensor.mode = 'US-DIST-CM'
 # default speed
 DEFAULT_SPEED = 2000
 SEARCH_SPEED = 400
-SEARCH_SPEED_SLOW = 200
+SEARCH_SPEED_SLOW = 400
 
 # print('search speed')
 # print(str(SEARCH_SPEED))
@@ -79,7 +79,7 @@ SEARCH_SPEED_SLOW = 200
 def revert():
     left_motor.stop()
     right_motor.stop()
-   
+    set_speed(DEFAULT_SPEED)
     # new absolute position
     abs_pos_r = right_motor.position + 500
     abs_pos_l = left_motor.position + 500
@@ -163,10 +163,14 @@ def search_slow():
     search_turn(-SEARCH_SPEED_SLOW)
     while True:
         time.sleep(DEFAULT_SLEEP_TIMEOUT_IN_SEC)
+        if color_sensor.value() > 15:
+            revert() 
+            break
         if ultrasonic_sensor.value() < DEFAULT_THRESHOLD_DISTANCE:
             for m in motors:
                 m.stop()
             break
+    turn_angle(15)
    
   
 def search_fast():        
@@ -175,10 +179,14 @@ def search_fast():
     search_turn(SEARCH_SPEED)
     while True:
         time.sleep(DEFAULT_SLEEP_TIMEOUT_IN_SEC)
+        if color_sensor.value() > 15:
+            revert() 
+            break
         if ultrasonic_sensor.value() < DEFAULT_THRESHOLD_DISTANCE:
             for m in motors:
                 m.stop()
             break
+    turn_angle(-15)
             
 def search():
     search_fast()
@@ -273,4 +281,8 @@ main()
 
 # while True:
     # print('color value: %s' % str(color_sensor.value()))
+
+# while True:
+    # print('ultrasonic value: %s' % str(ultrasonic_sensor.value()))
+
 
