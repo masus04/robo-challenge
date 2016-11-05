@@ -200,10 +200,7 @@ def search_slow():
             revert() 
             break
             
-        if touch_sensor_l.value() == 1 or touch_sensor_r.value() == 1:
-            attack()
-            
-        if ultrasonic_sensor.value() < DEFAULT_THRESHOLD_DISTANCE:
+        if ultrasonic_sensor.value() < DEFAULT_THRESHOLD_DISTANCE or touch_sensor_l.value() == 1 or touch_sensor_r.value() == 1:
             for m in motors:
                 m.stop()
             break
@@ -221,10 +218,7 @@ def search_fast():
             revert() 
             break
         
-        if touch_sensor_l.value() == 1 or touch_sensor_r.value() == 1:
-            attack()
-            
-        if ultrasonic_sensor.value() < DEFAULT_THRESHOLD_DISTANCE:
+        if ultrasonic_sensor.value() < DEFAULT_THRESHOLD_DISTANCE or touch_sensor_l.value() == 1 or touch_sensor_r.value() == 1:
             for m in motors:
                 m.stop()
             break
@@ -285,7 +279,11 @@ def turn_angle(angle):
         
 def main():
     print('Run robot, run!')
-    # Wait for button press
+    # Wait for button press    
+    ev3.Sound.beep("-f 100")
+    time.sleep(0.32)
+    ev3.Sound.beep("-f 100")
+    
     while True:
         buf = array.array('B', [0] * BUF_LEN)
         with open('/dev/input/by-path/platform-gpio-keys.0-event', 'r') as fd:
@@ -295,8 +293,6 @@ def main():
         key_code = globals()['KEY_' + key]
         key_state = test_bit(key_code, buf) and "pressed" or "released"
         if key_state == "pressed":
-            ev3.Sound.beep("-f 100")
-            ev3.Sound.beep("-f 100")
             break                  
     
     set_speed(DEFAULT_SPEED)
