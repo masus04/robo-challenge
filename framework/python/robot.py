@@ -75,23 +75,14 @@ SEARCH_SPEED_SLOW = 100
 ##
 #  Robot functionality
 ##
-def backward():
-
-    for m in motors:
-        speed = m.speed_sp
-        if speed > 0:
-            m.speed_sp = speed * -1
-
-        m.run_forever()
-
         
 def revert():
     left_motor.stop()
     right_motor.stop()
    
     # new absolute position
-    abs_pos_r = right_motor.position - 500
-    abs_pos_l = left_motor.position - 500
+    abs_pos_r = right_motor.position + 500
+    abs_pos_l = left_motor.position + 500
 
     right_motor.position_sp = abs_pos_r
     right_motor.run_to_abs_pos()
@@ -100,20 +91,19 @@ def revert():
     left_motor.run_to_abs_pos()
     
     while abs(right_motor.position - abs_pos_r) > 10:
-        # turn to new position
         pass
 
 def forward():
     for m in motors:
         speed = m.speed_sp
-        if speed < 0:
+        if speed > 0:
             m.speed_sp = speed * -1
         m.run_forever()
 
 
 def set_speed(speed):
     for m in motors:
-        m.speed_sp = speed
+        m.speed_sp = -speed
 
 
 def brake():
@@ -169,10 +159,7 @@ def attack():
             break
     
     
-def search():
-    # print('search speed search')
-    # print(str(SEARCH_SPEED))
-        
+def search():        
     for m in motors:
         m.stop()
     while True:
@@ -203,8 +190,7 @@ def run_loop():
         print('color value: %s' % str(color_sensor.value()))
         print('ultrasonic value: %s' % str(ultrasonic_sensor.value()))
         print('motor positions (r, l): %s, %s' % (str(right_motor.position), str(left_motor.position)))     
-        print('search speed')
-        print(str(SEARCH_SPEED))
+
         search()
         attack()
 
@@ -243,10 +229,7 @@ def turn_angle(angle):
     left_motor.run_to_abs_pos()
     
     while abs(right_motor.position - abs_pos_r) > 10:
-        # turn to new position
-        # print('turning')
         pass
-
         
 def main():
     print('Run robot, run!')
@@ -261,8 +244,6 @@ def main():
         if key_state == "pressed":
             break                  
     
-    print('search speed')
-    print(str(SEARCH_SPEED))
     set_speed(DEFAULT_SPEED)
     try:
         turn_angle(180)        
@@ -280,24 +261,6 @@ def main():
         print(e)
         teardown()
         
-        
-        
-def main_debug():
-    print('Run robot, run!')
-    set_speed(DEFAULT_SPEED)
-    try:
-        turn_angle(180)
-    # doing a cleanup action just before program ends
-    # handle ctr+c and system exit
-    except (KeyboardInterrupt, SystemExit):
-        teardown()
-        raise
-
-    # handle exceptions
-    except Exception as e:
-        print('ohhhh error!')
-        print(e)
-        teardown()
 ##
 # start the program
 ##
