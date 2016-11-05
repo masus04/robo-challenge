@@ -30,10 +30,10 @@ def test_bit(bit, bytes):
     return not bool(bytes[bit / 8] & (1 << (bit % 8)))
 
 # default sleep timeout in sec
-DEFAULT_SLEEP_TIMEOUT_IN_SEC = 0.01
+DEFAULT_SLEEP_TIMEOUT_IN_SEC = 0.05
 
 # default threshold distance
-DEFAULT_THRESHOLD_DISTANCE = 700 # 1000
+DEFAULT_THRESHOLD_DISTANCE = 600 # 1000
 
 ##
 # Setup
@@ -67,7 +67,7 @@ ultrasonic_sensor.mode = 'US-DIST-CM'
 # default speed
 DEFAULT_SPEED = 2000
 SEARCH_SPEED = 400
-SEARCH_SPEED_SLOW = 100
+SEARCH_SPEED_SLOW = 200
 
 # print('search speed')
 # print(str(SEARCH_SPEED))
@@ -158,30 +158,31 @@ def attack():
                 m.stop()
             break
     
-    
-def search():        
-    for m in motors:
-        m.stop()
+   
+def search_slow():
+    search_turn(-SEARCH_SPEED_SLOW)
     while True:
         time.sleep(DEFAULT_SLEEP_TIMEOUT_IN_SEC)
-        search_turn(SEARCH_SPEED)
         if ultrasonic_sensor.value() < DEFAULT_THRESHOLD_DISTANCE:
-            turn_angle(20)
             for m in motors:
                 m.stop()
             break
-    # SEARCH_SPEED *= -1
-    # turn_angle(5)
-    # print('Change Dir')
-    # time.sleep(2)
-    # while True:
-        # time.sleep(DEFAULT_SLEEP_TIMEOUT_IN_SEC)
-        # search_turn(-SEARCH_SPEED_SLOW)
-        ## turn_angle_async(45, SEARCH_SPEED)
-        # if ultrasonic_sensor.value() < DEFAULT_THRESHOLD_DISTANCE:
-            # for m in motors:
-                # m.stop()
-            # break
+   
+  
+def search_fast():        
+    for m in motors:
+        m.stop()
+    search_turn(SEARCH_SPEED)
+    while True:
+        time.sleep(DEFAULT_SLEEP_TIMEOUT_IN_SEC)
+        if ultrasonic_sensor.value() < DEFAULT_THRESHOLD_DISTANCE:
+            for m in motors:
+                m.stop()
+            break
+            
+def search():
+    search_fast()
+    search_slow()
     
 def run_loop():
     # game loop (endless loop)
@@ -234,6 +235,7 @@ def turn_angle(angle):
         
 def main():
     print('Run robot, run!')
+    # Wait for button press
     while True:
         buf = array.array('B', [0] * BUF_LEN)
         with open('/dev/input/by-path/platform-gpio-keys.0-event', 'r') as fd:
@@ -246,8 +248,10 @@ def main():
             break                  
     
     set_speed(DEFAULT_SPEED)
+    # init
     try:
-        turn_angle(180)        
+        turn_angle(180)
+        search_slow()
         run_loop()
         
     # doing a cleanup action just before program ends
