@@ -46,14 +46,19 @@ right_motor = ev3.LargeMotor('outA')
 print("motor right connected: %s" % str(right_motor.connected))
 
 left_motor = ev3.LargeMotor('outB')
-print("motor left connected: %s" % str(right_motor.connected))
+print("motor left connected: %s" % str(left_motor.connected))
+
+back_motor = ev3.MediumMotor('outC')
+print("motor left connected: %s" % str(back_motor.connected))
 
 motors = [left_motor, right_motor]
 right_motor.reset()
 left_motor.reset()
 
+
 right_motor.speed_regulation_enabled = 'on'
 left_motor.speed_regulation_enabled = 'on'
+back_motor.speed_regulation_enabled = 'on'
 
 # sensors
 color_sensor = ev3.ColorSensor()
@@ -107,6 +112,9 @@ def forward():
 def set_speed(speed):
     for m in motors:
         m.speed_sp = -speed
+        
+def set_back_speed(speed):
+    back_motor.speed_sp = -speed
 
 
 def brake():
@@ -154,11 +162,13 @@ def curve(is_left):
     else:
         left_motor.speed_sp = -DEFAULT_SPEED
         right_motor.speed_sp = -CURVE_SPEED
-    
+
     for m in motors:
         m.run_forever()
         
-    
+def start_backmotor():
+    set_back_speed(DEFAULT_SPEED)
+    back_motor.run_forever()        
         
 def attack_turn():
     if (touch_sensor_l.value() == 1 and touch_sensor_r.value() == 0):
@@ -171,7 +181,7 @@ def attack_turn():
 def attack():
     ev3.Sound.beep("-f 100")
     set_speed(DEFAULT_SPEED)
-    
+    start_backmotor()
     startTime = time.time()
     while True:
         time.sleep(DEFAULT_SLEEP_TIMEOUT_IN_SEC)
@@ -188,6 +198,7 @@ def attack():
         else:      
             for m in motors:
                 m.stop()
+            back_motor.stop()
             break
                             
    
@@ -319,6 +330,10 @@ def main():
 ##
 main()
 
+#while True:
+    #set_back_speed(DEFAULT_SPEED)
+    #back_motor.run_forever()
+    
 # while True:
     # print('color value: %s' % str(color_sensor.value()))
 
